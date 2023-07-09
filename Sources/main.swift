@@ -10,9 +10,13 @@ func heartbeat(_ date: inout Date, _ interval: Int = 5) {
 
 let inputQueue = Queue<String>()
 
+// イベント待ちのスレッド
+// mainスレッドでイベントを待つ場合、mainスレッドを占有してしまうことになるので、別途スレッドを作成する必要がある
 let inputThread = Thread {
     while true {
+        // イベントを待っている
         if let val = readLine() {
+            // 入力されたらvalueをQueueに追加
             inputQueue.enqueue(val)
         }
     }
@@ -37,8 +41,17 @@ scheduledTasks.append(Task(time: 12, param: 16, task: {num in print(sqrt(Double(
 var heartBeatDate = Date()
 
 let mainEventLoop = EventLoop { running in
+    /*
+     ⭐️RunLoopのsleep(秒)経ったあと呼ばれる。デフォルトでは0.1秒(10分の1秒)⭐️
+     */
+    
+    print("mainEventLoop closure called")
+    // 内部的に5秒後にハートビートが打たれる
     heartbeat(&heartBeatDate)
     
+    // 入力されたQueueに値が入っているか確認
+    // inputQueueへの値追加は、mainスレッドとは別のスレッド経由して呼ばれる。
+    // libsystem_kernel.dylib`mach_msg2_trap + 8, name = 'com.apple.uikit.eventfetch-thread' みたいな感じでiOSアプリを起動してボタンタップすると、タッチ用?のスレッドがある
     if let val = inputQueue.dequeue() {
         print("Your input is: \(val)")
         if val == "exit" {
